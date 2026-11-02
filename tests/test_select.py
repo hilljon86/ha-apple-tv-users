@@ -48,6 +48,10 @@ async def set_up(hass: HomeAssistant) -> SimpleNamespace:
     tv_entry.runtime_data = manager
     entry = MockConfigEntry(domain=DOMAIN, title="Apple TV Users")
     entry.add_to_hass(hass)
+    # what 0.1.0 left: a device of its own per entry, and a select for the HomePod
+    dr.async_get(hass).async_get_or_create(config_entry_id=entry.entry_id, identifiers={(APPLE_TV_DOMAIN, TV_ID)})
+    er.async_get(hass).async_get_or_create(SELECT_DOMAIN, DOMAIN, "AA:BB:CC:DD:EE:FF_user", suggested_object_id="nursery_user",
+                                           config_entry=entry)
     # the Apple TV integration's own setup would connect to a real TV
     with patch("homeassistant.components.apple_tv.async_setup_entry", return_value=True):
         assert await hass.config_entries.async_setup(entry.entry_id)
@@ -64,8 +68,12 @@ async def test_lists_and_switches_users(hass: HomeAssistant) -> None:
     # pyatv can't say who's on: unknown until switched from here
     assert state.state == STATE_UNKNOWN
     assert state.name == "Bedroom Apple TV User"
-    # HomePods have no users
+    # HomePods have no users, and what 0.1.0 left is gone
     assert hass.states.get("select.nursery_user") is None
+    assert er.async_get(hass).async_get("select.nursery_user") is None
+    users_entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert dr.async_entries_for_config_entry(dr.async_get(hass), users_entry.entry_id) == []
+    assert dr.async_get(hass).async_get_device({(APPLE_TV_DOMAIN, TV_ID)}).name == "Bedroom Apple TV"
 
     await hass.services.async_call(SELECT_DOMAIN, SERVICE_SELECT_OPTION, {ATTR_ENTITY_ID: SELECT, ATTR_OPTION: "Kids"},
                                    blocking=True)

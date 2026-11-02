@@ -40,7 +40,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             continue
         name = device.name_by_user or device.name
         selects.append(AppleTVUserSelect(tv_entry, player, name or tv_entry.title))
+    _remove_leftovers(hass, entry, {select.unique_id for select in selects})
     async_add_entities(selects)
+
+
+def _remove_leftovers(hass: HomeAssistant, entry: ConfigEntry, keep: set[str | None]) -> None:
+    """0.1.0 left a device per Apple TV entry and selects for HomePods: drop what isn't made now."""
+    entities = er.async_get(hass)
+    for entity in er.async_entries_for_config_entry(entities, entry.entry_id):
+        if entity.unique_id not in keep:
+            entities.async_remove(entity.entity_id)
+    devices = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(devices, entry.entry_id):
+        devices.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
 
 
 class AppleTVUserSelect(SelectEntity, RestoreEntity):
