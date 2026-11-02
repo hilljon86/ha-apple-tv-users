@@ -2,7 +2,7 @@
 
 Switch an Apple TV's user from Home Assistant.
 
-Home Assistant's [Apple TV integration](https://www.home-assistant.io/integrations/apple_tv) connects to each Apple TV with [pyatv](https://pyatv.dev), which can list and switch the TV's user accounts over the Companion protocol, but the integration doesn't offer it. This custom integration adds a **User** select to each Apple TV's device, using the Apple TV integration's own connection (nothing to pair).
+Home Assistant's [Apple TV integration](https://www.home-assistant.io/integrations/apple_tv) connects to each Apple TV with [pyatv](https://pyatv.dev), which can list and switch the TV's user accounts over the Companion protocol, but the integration doesn't offer it. This custom integration adds a **User** select for each Apple TV ("Bedroom Apple TV User"), using the Apple TV integration's own connection (nothing to pair).
 
 - The select is named after the TV's media player: `media_player.bedroom_apple_tv` gets `select.bedroom_apple_tv_user`, with the media player in its `media_player` attribute.
 - Its options are the TV's users, read when the TV connects and every six hours.

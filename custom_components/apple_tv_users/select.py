@@ -15,8 +15,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -28,31 +27,35 @@ REFRESH_EVERY = timedelta(hours=6)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Any) -> None:
-    registry = er.async_get(hass)
-    entities = []
+    entities = er.async_get(hass)
+    devices = dr.async_get(hass)
+    selects = []
     for tv_entry in hass.config_entries.async_entries(APPLE_TV_DOMAIN):
         if tv_entry.unique_id is None or tv_entry.disabled_by is not None:
             continue
-        player = registry.async_get_entity_id("media_player", APPLE_TV_DOMAIN, tv_entry.unique_id)
-        entities.append(AppleTVUserSelect(tv_entry, player))
-    async_add_entities(entities)
+        player = entities.async_get_entity_id("media_player", APPLE_TV_DOMAIN, tv_entry.unique_id)
+        device = devices.async_get_device(identifiers={(APPLE_TV_DOMAIN, tv_entry.unique_id)})
+        name = (device.name_by_user or device.name) if device is not None else None
+        selects.append(AppleTVUserSelect(tv_entry, player, name or tv_entry.title))
+    async_add_entities(selects)
 
 
 class AppleTVUserSelect(SelectEntity, RestoreEntity):
     """The Apple TV's users. pyatv can't say which one is current, so this shows the one last
-    switched to from Home Assistant (switching on the TV itself goes unnoticed)."""
+    switched to from Home Assistant (switching on the TV itself goes unnoticed).
 
-    _attr_has_entity_name = True
-    _attr_name = "User"
+    Not attached to the Apple TV's device: Home Assistant makes a second device of the same name
+    for another integration's entity rather than joining the Apple TV integration's."""
+
     _attr_icon = "mdi:account-switch"
     _attr_should_poll = False
 
-    def __init__(self, tv_entry: ConfigEntry, player: str | None) -> None:
+    def __init__(self, tv_entry: ConfigEntry, player: str | None, tv_name: str) -> None:
         self._tv_entry = tv_entry
         self._identifier: str = tv_entry.unique_id  # type: ignore[assignment]
         self._accounts: dict[str, str] = {}
         self._attr_unique_id = f"{self._identifier}_user"
-        self._attr_device_info = DeviceInfo(identifiers={(APPLE_TV_DOMAIN, self._identifier)})
+        self._attr_name = f"{tv_name} User"
         self._attr_options = []
         self._attr_current_option = None
         # named after the TV's media player, so apps can find it: select.<object id>_user

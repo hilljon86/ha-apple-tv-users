@@ -56,8 +56,7 @@ async def test_lists_and_switches_users(hass: HomeAssistant) -> None:
     assert state.attributes["media_player"] == "media_player.bedroom_apple_tv"
     # pyatv can't say who's on: unknown until switched from here
     assert state.state == STATE_UNKNOWN
-    entity = er.async_get(hass).async_get(SELECT)
-    assert entity.device_id == dr.async_get(hass).async_get_device({(APPLE_TV_DOMAIN, TV_ID)}).id
+    assert state.name == "Bedroom Apple TV User"
 
     await hass.services.async_call(SELECT_DOMAIN, SERVICE_SELECT_OPTION, {ATTR_ENTITY_ID: SELECT, ATTR_OPTION: "Kids"},
                                    blocking=True)
