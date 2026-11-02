@@ -1,0 +1,14 @@
+{
+  "domain": "apple_tv_users",
+  "name": "Apple TV Users",
+  "codeowners": ["@hilljon86"],
+  "config_flow": true,
+  "dependencies": ["apple_tv"],
+  "documentation": "https://github.com/hilljon86/ha-apple-tv-users",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/hilljon86/ha-apple-tv-users/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}
