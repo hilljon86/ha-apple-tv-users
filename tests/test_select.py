@@ -27,15 +27,22 @@ class FakeAccounts:
         self.switch_account = AsyncMock()
 
 
+def add_device(hass: HomeAssistant, identifier: str, name: str, model: str, player: str) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=APPLE_TV_DOMAIN, unique_id=identifier, title=name)
+    entry.add_to_hass(hass)
+    dr.async_get(hass).async_get_or_create(config_entry_id=entry.entry_id, identifiers={(APPLE_TV_DOMAIN, identifier)},
+                                           name=name, model=model)
+    er.async_get(hass).async_get_or_create("media_player", APPLE_TV_DOMAIN, identifier, suggested_object_id=player,
+                                           config_entry=entry)
+    return entry
+
+
 async def set_up(hass: HomeAssistant) -> SimpleNamespace:
     # the Apple TV integration needs zeroconf, which would open sockets
     hass.config.components.add("zeroconf")
-    tv_entry = MockConfigEntry(domain=APPLE_TV_DOMAIN, unique_id=TV_ID, title="Bedroom Apple TV")
-    tv_entry.add_to_hass(hass)
-    dr.async_get(hass).async_get_or_create(config_entry_id=tv_entry.entry_id, identifiers={(APPLE_TV_DOMAIN, TV_ID)},
-                                           name="Bedroom Apple TV")
-    er.async_get(hass).async_get_or_create("media_player", APPLE_TV_DOMAIN, TV_ID, suggested_object_id="bedroom_apple_tv",
-                                           config_entry=tv_entry)
+    tv_entry = add_device(hass, TV_ID, "Bedroom Apple TV", "Apple TV 4K (gen 2)", "bedroom_apple_tv")
+    # a HomePod, which the Apple TV integration also has
+    add_device(hass, "AA:BB:CC:DD:EE:FF", "Nursery", "HomePod Mini", "nursery")
     accounts = FakeAccounts()
     manager = SimpleNamespace(atv=SimpleNamespace(user_accounts=accounts))
     tv_entry.runtime_data = manager
@@ -57,6 +64,8 @@ async def test_lists_and_switches_users(hass: HomeAssistant) -> None:
     # pyatv can't say who's on: unknown until switched from here
     assert state.state == STATE_UNKNOWN
     assert state.name == "Bedroom Apple TV User"
+    # HomePods have no users
+    assert hass.states.get("select.nursery_user") is None
 
     await hass.services.async_call(SELECT_DOMAIN, SERVICE_SELECT_OPTION, {ATTR_ENTITY_ID: SELECT, ATTR_OPTION: "Kids"},
                                    blocking=True)

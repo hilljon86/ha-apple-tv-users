@@ -35,7 +35,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             continue
         player = entities.async_get_entity_id("media_player", APPLE_TV_DOMAIN, tv_entry.unique_id)
         device = devices.async_get_device(identifiers={(APPLE_TV_DOMAIN, tv_entry.unique_id)})
-        name = (device.name_by_user or device.name) if device is not None else None
+        # the Apple TV integration also has HomePods and AirPort Expresses, which have no users
+        if player is None or device is None or "Apple TV" not in (device.model or ""):
+            continue
+        name = device.name_by_user or device.name
         selects.append(AppleTVUserSelect(tv_entry, player, name or tv_entry.title))
     async_add_entities(selects)
 
