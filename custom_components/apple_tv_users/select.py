@@ -6,19 +6,16 @@ from datetime import datetime, timedelta
 import logging
 from typing import Any
 
-from homeassistant.components.apple_tv.const import (
-    DOMAIN as APPLE_TV_DOMAIN,
-    SIGNAL_CONNECTED,
-    SIGNAL_DISCONNECTED,
-)
+from homeassistant.components.apple_tv.const import SIGNAL_CONNECTED, SIGNAL_DISCONNECTED
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
+
+from .common import AppleTV, apple_tvs, remove_leftovers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,32 +24,9 @@ REFRESH_EVERY = timedelta(hours=6)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Any) -> None:
-    entities = er.async_get(hass)
-    devices = dr.async_get(hass)
-    selects = []
-    for tv_entry in hass.config_entries.async_entries(APPLE_TV_DOMAIN):
-        if tv_entry.unique_id is None or tv_entry.disabled_by is not None:
-            continue
-        player = entities.async_get_entity_id("media_player", APPLE_TV_DOMAIN, tv_entry.unique_id)
-        device = devices.async_get_device(identifiers={(APPLE_TV_DOMAIN, tv_entry.unique_id)})
-        # the Apple TV integration also has HomePods and AirPort Expresses, which have no users
-        if player is None or device is None or "Apple TV" not in (device.model or ""):
-            continue
-        name = device.name_by_user or device.name
-        selects.append(AppleTVUserSelect(tv_entry, player, name or tv_entry.title))
-    _remove_leftovers(hass, entry, {select.unique_id for select in selects})
+    selects = [AppleTVUserSelect(tv) for tv in apple_tvs(hass)]
+    remove_leftovers(hass, entry, "select", {select.unique_id for select in selects if select.unique_id})
     async_add_entities(selects)
-
-
-def _remove_leftovers(hass: HomeAssistant, entry: ConfigEntry, keep: set[str | None]) -> None:
-    """0.1.0 left a device per Apple TV entry and selects for HomePods: drop what isn't made now."""
-    entities = er.async_get(hass)
-    for entity in er.async_entries_for_config_entry(entities, entry.entry_id):
-        if entity.unique_id not in keep:
-            entities.async_remove(entity.entity_id)
-    devices = dr.async_get(hass)
-    for device in dr.async_entries_for_config_entry(devices, entry.entry_id):
-        devices.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
 
 
 class AppleTVUserSelect(SelectEntity, RestoreEntity):
@@ -65,23 +39,21 @@ class AppleTVUserSelect(SelectEntity, RestoreEntity):
     _attr_icon = "mdi:account-switch"
     _attr_should_poll = False
 
-    def __init__(self, tv_entry: ConfigEntry, player: str | None, tv_name: str) -> None:
-        self._tv_entry = tv_entry
-        self._identifier: str = tv_entry.unique_id  # type: ignore[assignment]
+    def __init__(self, tv: AppleTV) -> None:
+        self._tv = tv
+        self._identifier = tv.identifier
         self._accounts: dict[str, str] = {}
         self._attr_unique_id = f"{self._identifier}_user"
-        self._attr_name = f"{tv_name} User"
+        self._attr_name = f"{tv.name} User"
         self._attr_options = []
         self._attr_current_option = None
         # named after the TV's media player, so apps can find it: select.<object id>_user
-        if player is not None:
-            self.entity_id = f"select.{player.split('.', 1)[1]}_user"
-        self._attr_extra_state_attributes = {"media_player": player}
+        self.entity_id = f"select.{tv.object_id}_user"
+        self._attr_extra_state_attributes = {"media_player": tv.player}
 
     @property
     def _atv(self) -> Any:
-        manager = getattr(self._tv_entry, "runtime_data", None)
-        return getattr(manager, "atv", None)
+        return self._tv.atv
 
     @property
     def available(self) -> bool:

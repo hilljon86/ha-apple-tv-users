@@ -96,3 +96,19 @@ async def test_a_failed_switch_says_so(hass: HomeAssistant) -> None:
         await hass.services.async_call(SELECT_DOMAIN, SERVICE_SELECT_OPTION, {ATTR_ENTITY_ID: SELECT, ATTR_OPTION: "Jon"},
                                        blocking=True)
     assert hass.states.get(SELECT).state == STATE_UNKNOWN
+
+
+async def test_the_siri_button(hass: HomeAssistant) -> None:
+    from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
+    from pyatv.const import Protocol
+    from pyatv.protocols.companion.api import HidCommand
+    from unittest.mock import call
+
+    tv = await set_up(hass)
+    api = SimpleNamespace(hid_command=AsyncMock())
+    tv.manager.atv.user_accounts.get = lambda protocol: SimpleNamespace(api=api) if protocol == Protocol.Companion else None
+    state = hass.states.get("button.bedroom_apple_tv_siri")
+    assert state is not None and state.name == "Bedroom Apple TV Siri"
+    assert hass.states.get("button.nursery_siri") is None
+    await hass.services.async_call(BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: "button.bedroom_apple_tv_siri"}, blocking=True)
+    assert api.hid_command.await_args_list == [call(True, HidCommand.Siri), call(False, HidCommand.Siri)]

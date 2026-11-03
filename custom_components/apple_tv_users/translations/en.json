@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Apple TV Users",
-        "description": "Adds a User select to each Apple TV for switching its user. It uses the Apple TV integration's connection, so there's nothing to pair."
+        "description": "Adds a User select to each Apple TV for switching its user, and a Siri button. It uses the Apple TV integration's connection, so there's nothing to pair."
       }
     },
     "abort": {

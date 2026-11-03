@@ -9,6 +9,8 @@ Home Assistant's [Apple TV integration](https://www.home-assistant.io/integratio
 - Choosing one switches the TV (`select.select_option`).
 - pyatv can't tell which user is current, so the select shows the one last switched to from Home Assistant. Switching on the TV itself goes unnoticed.
 
+It also adds a **Siri** button for each Apple TV (`button.bedroom_apple_tv_siri`): the Siri Remote's Siri button, which pyatv's Companion protocol has but neither pyatv's remote control nor the Apple TV integration offers. A press opens Siri on the TV; Siri listens through the Siri Remote, not through what pressed the button.
+
 ## Install
 
 With HACS: add this repository as a custom repository (category Integration), download Apple TV Users, restart Home Assistant, then add the Apple TV Users integration under Settings > Devices & services.
